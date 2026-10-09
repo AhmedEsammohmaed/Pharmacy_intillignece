@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: pharmaintelligence-api
+    runtime: python
+    plan: free
+    rootDir: apps/api
+    buildCommand: pip install .
+    startCommand: uvicorn pharma_api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health/live
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: pharmaintelligence-web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: pharmaintelligence-web
+    runtime: static
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:web
+    staticPublishPath: apps/web/out
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_API_BASE_URL
+        fromService:
+          type: web
+          name: pharmaintelligence-api
+          envVarKey: RENDER_EXTERNAL_URL
